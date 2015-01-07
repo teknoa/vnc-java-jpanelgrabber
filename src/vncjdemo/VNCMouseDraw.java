@@ -1,16 +1,9 @@
 package vncjdemo;
 
-import gnu.rfb.server.DefaultRFBAuthenticator;
-import gnu.rfb.server.RFBAuthenticator;
-import gnu.rfb.server.RFBHost;
-import gnu.vnc.WebServer;
-import gnu.vnc.pixels.VNCPixels;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -20,11 +13,12 @@ import java.awt.image.Raster;
 import java.awt.image.SampleModel;
 import java.awt.image.SinglePixelPackedSampleModel;
 import java.awt.image.WritableRaster;
-import java.net.Authenticator;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+
+import edu.monash.unrealrfb.server.JPanelRFBServer;
 
 public class VNCMouseDraw extends JPanel{
 
@@ -33,25 +27,38 @@ public class VNCMouseDraw extends JPanel{
 
 	MouseEvent lastMouseEvent;
 
-	private static JFrame frame;
+	private JFrame frame;
 
-	private RFBHost rfbHost;
-
-	private VNCPixels vncPixels;
+	private JPanelRFBServer vncPixels;
 
 	BufferedImage bi;
 
 	private int[] pixels;
 
-	private static VNCMouseDraw vncMouseDraw;
 
 	private int mergedpixels[];
 
 	private int[] rawpixelarrays;
 
+	String displayName = "Drawing Test";
+	
 	public VNCMouseDraw() {
 
+		frame = new JFrame("vnc drawing test");
+		frame.setSize(600, 600);
+		frame.getContentPane().setLayout(new BorderLayout());
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.getContentPane().add(this, BorderLayout.CENTER);
+		frame.setVisible(true);
+		SwingUtilities.invokeLater(new Runnable() {
 
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+				setupServer();
+
+			}
+		});
 
 	}
 
@@ -78,22 +85,25 @@ public class VNCMouseDraw extends JPanel{
 				g2d.clearRect(0, 0, getWidth(), getHeight());
 			clearscreen = false;
 			g2d.setColor(Color.red);
-			g2d.fillRect(lastMouseEvent.getX()-5, lastMouseEvent.getY()-5, 10,10);
+			if(lastMouseEvent != null)
+				g2d.fillRect(lastMouseEvent.getX()-5, lastMouseEvent.getY()-5, 10,10);
 			g.drawImage(bi, 0, 0, null);
 
 			pixels = bi.getRaster().getPixels(0, 0, getWidth(), getHeight(), rawpixelarrays);
+			if(mergedpixels == null)
+				mergedpixels = new int[getWidth() * getHeight()];
+			
 			for(int i = 0; i < getWidth() * getHeight(); i++) {
 				int b = 0;
 				b |= pixels[i];
 				mergedpixels[i] = 0;
-				mergedpixels[i] |= pixels[3*i+2]; 
-				mergedpixels[i] |= pixels[3*i+1] << 8; 
-				mergedpixels[i] |= pixels[3*i] << 16;
+				mergedpixels[i] |= pixels[3*i+2] << 8; 
+				mergedpixels[i] |= pixels[3*i+1] << 16; 
+				mergedpixels[i] |= pixels[3*i] << 24;
 			}
-//			vncPixels.setPixelArray(mergedpixels, getWidth(), getHeight());
 
-
-			vncPixels.getQueue().takeSnapshot(vncPixels);
+			if(vncPixels != null)
+				vncPixels.addPixels(mergedpixels, getWidth(), getHeight());
 
 
 //		}
@@ -129,26 +139,22 @@ public class VNCMouseDraw extends JPanel{
 
 
 		int display = 0;
-		String serverClassName = "gnu.vnc.pixels.VNCPixels";
-		String displayName = "Drawing Test";
+		
 
-		RFBAuthenticator authenticator = new DefaultRFBAuthenticator("password");
 
 		System.out.println( displayName );
 
-		vncPixels = new VNCPixels(displayName, getWidth(), getHeight());
-		mergedpixels = new int[getWidth() * getHeight()];
-		for(int i = 0; i < getWidth() * getHeight(); i++)
-			mergedpixels[i] = 0x00ff8811; 
-		
-		vncPixels.setPixelArray(mergedpixels, getWidth(), getHeight());
 
-		// RFB host
-		rfbHost = new RFBHost( display, displayName, vncPixels, authenticator );
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+				vncPixels = new JPanelRFBServer(displayName, "172.20.10.2", 8888);
+//				vncPixels = new JPanelRFBServer(displayName, "localhost", 8888);
+			}
+		}).start();
 
-		System.out.println( "  VNC display " + display );
-		System.out.println( "  Web server on port " + ( 5900 + display ) );
-		System.out.println( "  Class: " + serverClassName );
 	}
 
 	class MyMouseAdapter extends MouseAdapter {
@@ -180,21 +186,6 @@ public class VNCMouseDraw extends JPanel{
 
 
 	public static void main(String[] args) {
-		frame = new JFrame("vnc drawing test");
-		frame.setSize(600, 600);
-		frame.getContentPane().setLayout(new BorderLayout());
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		vncMouseDraw = new VNCMouseDraw();
-		frame.getContentPane().add(vncMouseDraw, BorderLayout.CENTER);
-		frame.setVisible(true);
-		SwingUtilities.invokeLater(new Runnable() {
-
-			@Override
-			public void run() {
-				// TODO Auto-generated method stub
-				vncMouseDraw.setupServer();
-
-			}
-		});
+		new VNCMouseDraw();
 	}
 }
