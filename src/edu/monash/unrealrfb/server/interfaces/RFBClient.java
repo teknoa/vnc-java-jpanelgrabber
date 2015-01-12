@@ -28,8 +28,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import edu.monash.unrealrfb.algorithm.Colour;
-import edu.monash.unrealrfb.algorithm.Rect;
+import edu.monash.unrealrfb.algorithm.Rectangle;
 
 public interface RFBClient
 {
@@ -45,11 +44,9 @@ public interface RFBClient
 	
 	// Messages from server to client
 	
-	public void writeFrameBufferUpdate( Rect rects[] ) throws IOException;
+	public void writeFrameBufferUpdate( Rectangle rects ) throws IOException;
 //	public void writeSetColourMapEntries( int firstColour, Colour colours[] ) throws IOException;
-	public void writeBell() throws IOException;
-	public void writeServerCutText( String text ) throws IOException;
-        public void setUpdateIsAvailable(boolean value);
+//        public void setUpdateIsAvailable(boolean value);
 	
 	// Operations
 

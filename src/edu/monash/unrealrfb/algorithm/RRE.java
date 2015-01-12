@@ -37,7 +37,7 @@ import java.util.*;
 
 import edu.monash.unrealrfb.server.constants.rfb;
 
-public class RRE extends Rect
+public class RRE extends SimpleRectangle
 {
 	//
 	// Attributes
@@ -156,7 +156,7 @@ public class RRE extends Rect
 	{
 		System.out.println("writing " + subrects.length  + "rectangles");
 		output.writeInt( subrects.length );
-		writePixel( output, bgpixel );
+		output.writeInt( bgpixel );
 		for( int i = 0; i < subrects.length; i++ )
 		{
 			output.writeShort( subrects[i].w );
@@ -168,10 +168,33 @@ public class RRE extends Rect
 		}
 	}
 
+	/**
+	 * returns size of this RRE rectangle in bytes
+	 * @return
+	 */
+	public int getDataSize() {
+		int totalsize = 0;
+		totalsize += 4; //number of subrectangles
+		totalsize += 4; //color of background 
+		for( int i = 0; i < subrects.length; i++ )
+		{
+			totalsize += 12; //2byte each for W/H/X/Y and 4byte for color
+		}
+		return totalsize;
+	}
+	
+	
+	
 	//
 	// Object
 	//
 	
+	@Override
+	public int getEncodingType() {
+		// TODO Auto-generated method stub
+		return rfb.EncodingRRE;
+	}
+
 	public Object clone() throws CloneNotSupportedException
 	{
 		SubRect[] subrectsClone = new SubRect[ subrects.length ];

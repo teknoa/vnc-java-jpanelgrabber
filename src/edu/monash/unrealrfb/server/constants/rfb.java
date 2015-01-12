@@ -64,6 +64,7 @@ public abstract class rfb
 	public static final int EncodingRRE = 2;
 	public static final int EncodingCoRRE = 4;
 	public static final int EncodingHextile = 5;
+	public static final int EncodingDEFLATE = 6;
 
 	// Hextile
 	public static final int HextileRaw = (1 << 0);

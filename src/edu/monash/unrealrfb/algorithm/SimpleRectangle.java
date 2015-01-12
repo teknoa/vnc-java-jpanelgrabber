@@ -23,92 +23,27 @@ package edu.monash.unrealrfb.algorithm;
 * <hr></table></center>
 **/
 
-import java.awt.*;
-import java.awt.image.*;
-import java.io.*;
+import java.io.DataOutput;
+import java.io.IOException;
 
-import edu.monash.unrealrfb.server.constants.rfb;
-
-public abstract class Rect implements Cloneable
+public abstract class SimpleRectangle implements Cloneable, Rectangle
 {
-	//
-	// Static operations
-	//
-
-	public static int bestEncoding( int[] encodings )
-	{
-		for( int i = 0; i < encodings.length; i++ )
-		{
-			switch( encodings[i] )
-			{
-			case rfb.EncodingRaw:
-			case rfb.EncodingRRE:
-			case rfb.EncodingCoRRE:
-			case rfb.EncodingHextile:
-				return encodings[i];
-			}
-		}
-
-		// List does not include a supported encoding
-		return rfb.EncodingHextile;
-	}
-
-	public static Rect encode( int encoding, Image image, int x, int y, int w, int h )
-	{
-
-		// Grab pixels
-		int pixels[] = new int[ w * h ];
-		PixelGrabber grabber = new PixelGrabber( image, x, y, w, h, pixels, 0, w );
-		try
-		{
-			grabber.grabPixels();
-		}
-		catch( InterruptedException e )
-		{
-		}
-		return encode( encoding, pixels, x, y, w, x, y, w, h );
-	}
-
-	public static Rect encode( int encoding, int[] pixels, int scanline, int x, int y, int w, int h )
-	{
-		return encode( encoding, pixels, 0, 0, scanline, x, y, w, h );
-	}
-
-	public static Rect encode( int encoding, int[] pixels, int offsetX, int offsetY, int scanline, int x, int y, int w, int h )
-	{
-//         System.err.println("DEBUG[Rect] encode("+w+" x "+h+") pixels[0]="+pixels[0]);
-         if(w==0)
-         if(h==0)
-           {
-            Exception e = new Exception("w==h==0");
-            e.printStackTrace();
-           }
-		switch( encoding )
-		{
-		case rfb.EncodingRaw:
-			return new Raw( pixels, offsetX, offsetY, scanline, x, y, w, h );
-		case rfb.EncodingRRE:
-			return new RRE( pixels, offsetX, offsetY, scanline, x, y, w, h );
-		default:
-			return null;
-		}
-	}
 
 	//
 	// Attributes
 	//
 
-	public int x;
-	public int y;
-	public int w;
-	public int h;
+	public int x = 0;
+	public int y = 0;
+	public int w = 0;
+	public int h = 0;
 	public int count = 1;
 
 	//
 	// Construction
 	//
 
-	public Rect( int x, int y, int w, int h )
+	public SimpleRectangle( int x, int y, int w, int h )
 	{
 		this.x = x;
 		this.y = y;
@@ -120,6 +55,10 @@ public abstract class Rect implements Cloneable
 	// Operations
 	//
 
+	/* (non-Javadoc)
+	 * @see edu.monash.unrealrfb.algorithm.Rectangle#writeData(java.io.DataOutput)
+	 */
+	@Override
 	public void writeData( DataOutput output ) throws IOException
 	{
 		output.writeShort( x );
@@ -128,6 +67,18 @@ public abstract class Rect implements Cloneable
 		output.writeShort( h );
 	}
 
+	/* (non-Javadoc)
+	 * @see edu.monash.unrealrfb.algorithm.Rectangle#getDataSize()
+	 */
+	@Override
+	public int getDataSize(){
+		return 8;
+	}
+	
+	/* (non-Javadoc)
+	 * @see edu.monash.unrealrfb.algorithm.Rectangle#transform(int, int)
+	 */
+	@Override
 	public void transform( int transformX, int transformY )
 	{
 		x += transformX;
@@ -217,4 +168,18 @@ public abstract class Rect implements Cloneable
 
 		return maxclr;*/
 	}
+
+	@Override
+	public int getWidth() {
+		// TODO Auto-generated method stub
+		return w;
+	}
+
+	@Override
+	public int getHeight() {
+		// TODO Auto-generated method stub
+		return h;
+	}
+	
+	
 }

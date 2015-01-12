@@ -41,7 +41,7 @@ public interface RFBServer
 //	public void removeClient( RFBClient client );
 	
 	// Attributes
-	
+	public boolean hasFrames();
 	public String getDesktopName(  );
 	// Messages from client to server
 

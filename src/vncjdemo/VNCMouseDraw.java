@@ -18,10 +18,18 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Logger;
+
 import edu.monash.unrealrfb.server.JPanelRFBServer;
 
 public class VNCMouseDraw extends JPanel{
 
+	Logger logger = Logger.getLogger(VNCMouseDraw.class);
+	static String DISPLAYHOST = "49.127.4.153";
+//	static String DISPLAYHOST = "192.168.0.24";
+//	static String DISPLAYHOST = "localhost";
+	
 	boolean mouseClicked = false;
 	private boolean clearscreen;
 
@@ -45,7 +53,7 @@ public class VNCMouseDraw extends JPanel{
 	public VNCMouseDraw() {
 
 		frame = new JFrame("vnc drawing test");
-		frame.setSize(600, 600);
+		frame.setSize(800, 800);
 		frame.getContentPane().setLayout(new BorderLayout());
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().add(this, BorderLayout.CENTER);
@@ -84,9 +92,12 @@ public class VNCMouseDraw extends JPanel{
 			if(clearscreen)
 				g2d.clearRect(0, 0, getWidth(), getHeight());
 			clearscreen = false;
-			g2d.setColor(Color.red);
-			if(lastMouseEvent != null)
-				g2d.fillRect(lastMouseEvent.getX()-5, lastMouseEvent.getY()-5, 10,10);
+			g2d.setColor(Color.white);
+			if(lastMouseEvent != null){
+				g2d.fillRect(lastMouseEvent.getX()-5, lastMouseEvent.getY()-5, 10,10); 
+				g2d.fillRect(lastMouseEvent.getX()-5+100, lastMouseEvent.getY()-5+30, 4,4); 
+				g2d.fillRect(lastMouseEvent.getX()-5+120, lastMouseEvent.getY()-5+50, 4,4); 
+			}
 			g.drawImage(bi, 0, 0, null);
 
 			pixels = bi.getRaster().getPixels(0, 0, getWidth(), getHeight(), rawpixelarrays);
@@ -128,6 +139,7 @@ public class VNCMouseDraw extends JPanel{
 
 	
 	void setupServer() {
+		logger.debug("setting up server");
 		MyMouseAdapter ma = new MyMouseAdapter();
 		addMouseListener(ma);
 		addMouseMotionListener(ma);
@@ -150,7 +162,7 @@ public class VNCMouseDraw extends JPanel{
 			@Override
 			public void run() {
 				// TODO Auto-generated method stub
-				vncPixels = new JPanelRFBServer(displayName, "172.20.10.2", 8888);
+				vncPixels = new JPanelRFBServer(displayName, DISPLAYHOST, 8888);
 //				vncPixels = new JPanelRFBServer(displayName, "localhost", 8888);
 			}
 		}).start();
@@ -186,6 +198,7 @@ public class VNCMouseDraw extends JPanel{
 
 
 	public static void main(String[] args) {
+		BasicConfigurator.configure();
 		new VNCMouseDraw();
 	}
 }

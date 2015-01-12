@@ -31,7 +31,7 @@ import org.apache.log4j.Logger;
 
 import edu.monash.unrealrfb.algorithm.Colour;
 import edu.monash.unrealrfb.algorithm.PixelFrame;
-import edu.monash.unrealrfb.algorithm.Rect;
+import edu.monash.unrealrfb.algorithm.Rectangle;
 import edu.monash.unrealrfb.server.constants.rfb;
 import edu.monash.unrealrfb.server.interfaces.RFBClient;
 import edu.monash.unrealrfb.server.interfaces.RFBServer;
@@ -78,7 +78,7 @@ public class JPanelRFBServer implements RFBServer, PixelsOwner
 
 		this.panelID = globalPanelID++;
 		
-		queue = new FrameBuffer(rfb.EncodingRRE);
+		queue = new FrameBuffer(rfb.EncodingDEFLATE);
 
 		Socket inetsocket;
 		try {
@@ -136,6 +136,7 @@ public class JPanelRFBServer implements RFBServer, PixelsOwner
 	// RFBServer
 	//
 	public void close() {
+		if(socket != null)
 		socket.close();
 	}
 	
@@ -155,13 +156,19 @@ public class JPanelRFBServer implements RFBServer, PixelsOwner
 	@Override
 	public void addPixels(int[] pixels, int width, int height) {
 		
-		getQueue().push(pixels,width,height);
-		if(socket != null)
-			socket.setUpdateIsAvailable(true);
+		addPixelFrame(new PixelFrame(width,height,pixels));
+		
 	}
 
 	
+	
 	// Messages from client to server
+
+	@Override
+	public boolean hasFrames() {
+		// TODO Auto-generated method stub
+		return !getQueue().isEmpty();
+	}
 
 	public void setClientProtocolVersionMsg( RFBClient client, String protocolVersionMsg ) throws IOException
 	{
@@ -179,13 +186,13 @@ public class JPanelRFBServer implements RFBServer, PixelsOwner
 
 	public void frameBufferUpdateRequest( RFBClient client, boolean incremental, int x, int y, int w, int h ) throws IOException
 	{
-		Rect[] popEncoded = queue.popEncoded();
+		Rectangle popEncoded = queue.popEncoded();
 		if(popEncoded != null)
 			client.writeFrameBufferUpdate(popEncoded );
-		else {
-			if(socket != null)
-				socket.setUpdateIsAvailable(false);
-		}
+//		else {
+//			if(socket != null)
+//				socket.setUpdateIsAvailable(false);
+//		}
 	}
 
 	public void keyEvent( RFBClient client, boolean down, int key ) throws IOException

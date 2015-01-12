@@ -25,18 +25,17 @@ package edu.monash.unrealrfb.server;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.Iterator;
-import java.util.Vector;
 
 import org.apache.log4j.Logger;
 
-import edu.monash.unrealrfb.algorithm.Colour;
-import edu.monash.unrealrfb.algorithm.Rect;
+import edu.monash.unrealrfb.algorithm.Rectangle;
 import edu.monash.unrealrfb.server.constants.rfb;
 import edu.monash.unrealrfb.server.interfaces.RFBClient;
 import edu.monash.unrealrfb.server.interfaces.RFBServer;
@@ -51,20 +50,24 @@ public class RFBSocket implements RFBClient, Runnable {
 	// Private
 
 	Logger logger = Logger.getLogger(RFBSocket.class);
-	
+
 	private Socket socket;
 	private RFBServer server = null;
 	private DataInputStream input;
 	private DataOutputStream output;
-
+	OutputStream outputstream;
+	
 	private String protocolVersionMsg = "";
 	private boolean shared = true;
 	private int[] encodings = new int[0];
 	private int preferredEncoding = rfb.EncodingRRE;
 	private boolean isRunning = false;
 	private boolean threadFinished = false;
-	private Vector updateQueue=new Vector();
 	private boolean updateAvailable = true;
+
+	private int version = 0x01;
+
+	private short compressiontype = rfb.EncodingRRE;
 
 
 	/**
@@ -75,8 +78,8 @@ public class RFBSocket implements RFBClient, Runnable {
 		this.server = server;
 		// Streams
 		input = new DataInputStream( new BufferedInputStream( socket.getInputStream() ) );
-		output = new DataOutputStream( new BufferedOutputStream( socket.getOutputStream(), 16384 ) );
-
+//		output = new DataOutputStream( new BufferedOutputStream( socket.getOutputStream(), 16384 ) );
+		outputstream = socket.getOutputStream();
 		// Start socket listener thread
 		new Thread( this ).start();
 	}
@@ -90,7 +93,7 @@ public class RFBSocket implements RFBClient, Runnable {
 
 		// Streams
 		input = new DataInputStream( new BufferedInputStream( socket.getInputStream() ) );
-		output = new DataOutputStream( new BufferedOutputStream( socket.getOutputStream(), 16384 ) );
+		output = new DataOutputStream( new BufferedOutputStream( socket.getOutputStream() ) );
 
 		// Start socket listener thread
 		if(syncronous) {
@@ -142,40 +145,51 @@ public class RFBSocket implements RFBClient, Runnable {
 	}
 
 	// Messages from server to client
+	int packetid=0;
+	public synchronized void writeFrameBufferUpdate( Rectangle rect ) throws IOException {
 
-	public synchronized void writeFrameBufferUpdate( Rect rects[] ) throws IOException {
+//		logger.debug("writing framebuffer update to output");
 
-		logger.debug("writing framebuffer update to output");
+		int size = 0;
+//		size += 4; //packetId
+		size += 6; //version + compresseiontype
+		size += 4; //2byte each for W/H of frame
+		size +=2; //1byte each for clientid and panelid
+		size += rect.getDataSize();
+		byte[] outputbuf;
+		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(size + 4);
+		DataOutputStream dataout = new DataOutputStream(byteArrayOutputStream);
+	
+		logger.debug("package content size: " + size);
+		dataout.writeInt(size);
+		dataout.writeInt(version);
+		dataout.writeShort(rect.getEncodingType());
 
-		int i;
+		dataout.writeShort(rect.getWidth());
+		dataout.writeShort(rect.getHeight());
 
-		output.writeShort(rects[0].w);
-		output.writeShort(rects[0].h);
+		dataout.writeByte(server.getClientID());
+		dataout.writeByte(server.getPanelID());
+
+		rect.writeData( dataout );
+		outputbuf = byteArrayOutputStream.toByteArray();
+		logger.debug("flushing stream with bufferlength: "+outputbuf.length);
 		
-		output.writeByte(server.getClientID());
-		output.writeByte(server.getPanelID());
+		System.out.print("first bytes of package: ");
+		for(int i = 0; i < 16; i++)
+			System.out.printf("%02x:",outputbuf[i]);
+		System.out.println();
 		
-//		for( i = 0; i < rects.length; i++ ) {
-			rects[0].writeData( output );
-//		}
-
-		output.flush();
+		System.out.print(" last bytes of package: ");
+		for(int i = 0; i < 16; i++)
+			System.out.printf("%02x:",outputbuf[outputbuf.length-16+i]);
+		System.out.println();
+		outputstream.write(outputbuf);
+//		outputstream.flush();
+//		logger.debug("writing frambuffer done..");
 	}
 
 
-	public synchronized void writeBell() throws IOException {
-		//		writeServerMessageType( rfb.Bell );
-	}
-
-	public synchronized void writeServerCutText( String text ) throws IOException {
-		//		writeServerMessageType( rfb.ServerCutText );
-		output.writeByte( 0 );  // padding
-		output.writeShort( 0 ); // padding
-		output.writeInt( text.length() );
-		output.writeBytes( text );
-		output.writeByte( 0 );
-		output.flush();
-	}
 
 	// Operations
 
@@ -190,9 +204,12 @@ public class RFBSocket implements RFBClient, Runnable {
 			}
 		}
 		try{
-			output.close();
-			input.close();
-			socket.close();
+			if(output != null)
+				output.close();
+			if(input != null)
+				input.close();
+			if(socket != null)
+				socket.close();
 		}
 		catch(IOException e){
 			VLogger.getLogger().log("Got and exception shutting down RFBSocket ",e);
@@ -213,9 +230,9 @@ public class RFBSocket implements RFBClient, Runnable {
 		try {
 			//                 System.err.println("DEBUG[RFBSocket] run() calling writeProtocolVersionMsg()");
 			// Handshaking
-//			writeProtocolVersionMsg();
+			//			writeProtocolVersionMsg();
 			//                 System.err.println("DEBUG[RFBSocket] run() calling readProtocolVersionMsg()");
-//			readProtocolVersionMsg();
+			//			readProtocolVersionMsg();
 			//                 System.err.println("DEBUG[RFBSocket] run() calling writeAuthScheme()");
 			//if(((DefaultRFBAuthenticator)authenticator).authenticate(input,output)==false){
 			//			readClientInit();
@@ -225,35 +242,47 @@ public class RFBSocket implements RFBClient, Runnable {
 			//                 System.err.println("DEBUG[RFBSocket] run() message loop");
 
 			logger.debug("RFBClient message loop");
+			int i = 0;
 			while( isRunning ) {
-				
+//				System.out.print("looping..");
 				if(getUpdateIsAvailable()){
 					// go ahead and send the updates
-//					System.out.println("doing frame buffer update");
-					
+					System.out.println("frame available doing frame buffer update");
+
 					doFrameBufferUpdate();
-				}                    
-				if(input.available() == 0){
+					
+					int readUnsignedByte;
+					do{
+						System.out.print("...reading remotedisplay status: ");
+						readUnsignedByte = input.readUnsignedByte();
+						System.out.print("..result: " + readUnsignedByte);
+						if(readUnsignedByte == 0) {
+//							try{
+								System.out.println(".......waiting for display ...");
+//								Thread.currentThread().sleep(50);
+//							}
+//							catch(InterruptedException x){
+//							}
+						} else
+							System.out.println(".......display ready...");
+					}while(readUnsignedByte == 0);
+				} else               
+//				if(input.available() == 0){
 					try{
-						Thread.currentThread().sleep(10);
+						Thread.sleep(50);
+//						System.out.print(".");
+//						if(i++ % 120 == 0) System.out.println();
 					}
 					catch(InterruptedException x){
 					}
-				}
-				else{
+//				}
+//				else{
+
 					
-					int readUnsignedByte;
-					while((readUnsignedByte = input.readUnsignedByte()) == 0){
-						try{
-							System.out.println("waiting for display ...");
-							Thread.currentThread().sleep(10);
-						}
-						catch(InterruptedException x){
-						}
-					}}
-				}
-		
-			
+//				}
+
+
+			}
 		}
 		catch( IOException x ) {
 			System.out.println("Got an IOException, drop the client");
@@ -329,12 +358,12 @@ public class RFBSocket implements RFBClient, Runnable {
 
 
 
-	public void setUpdateIsAvailable(boolean value) {
-		updateAvailable = value;
-	}
+	//	public void setUpdateIsAvailable(boolean value) {
+	//		updateAvailable = value;
+	//	}
 
 	public boolean getUpdateIsAvailable() {
-		return(updateAvailable);
+		return server.hasFrames();
 	}
 
 	private class UpdateRequest{

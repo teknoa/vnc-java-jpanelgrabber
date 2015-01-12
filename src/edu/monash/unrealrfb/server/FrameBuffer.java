@@ -30,7 +30,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.log4j.Logger;
 
 import edu.monash.unrealrfb.algorithm.PixelFrame;
-import edu.monash.unrealrfb.algorithm.Rect;
+import edu.monash.unrealrfb.algorithm.Rectangle;
+import edu.monash.unrealrfb.algorithm.RectangleEncoderFactory;
 
 public class FrameBuffer {
 
@@ -59,25 +60,27 @@ public class FrameBuffer {
 			frames.poll();
 		frames.add(frame);
 		
-		logger.debug("num of frames in cache " + frames.size());
+//		logger.debug("num of frames in cache " + frames.size());
 	}
 
-	public Rect[] popEncoded() throws IOException {
+	public Rectangle popEncoded() throws IOException {
 		// Pop
 		PixelFrame frame = frames.poll();
 		if(frame == null)
 			return null;
 
 		// Encode rectangles
-		Rect[] rects = new Rect[ 1 ];
-		rects[0] = Rect.encode( encoding, frame.pixelarray, frame.width, 0, 0, frame.width, frame.height );
+		Rectangle rects;
+		rects = RectangleEncoderFactory.encode( encoding, frame.pixelarray, frame.width, 0, 0, frame.width, frame.height );
 
-		if( rects.length == 0 ) {
-			throw new IOException("rects.length == 0, encoding an empty raw rect would cause blue screen on the official VNC-client (not a Windows(tm)-BlueScreen(tm)).");
+		if( rects == null ) {
+			throw new IOException("rects == 0, encoding an empty raw rect would cause blue screen on the official VNC-client (not a Windows(tm)-BlueScreen(tm)).");
 		}
 
 		return rects;
 	}
 
-
+	public boolean isEmpty(){
+		return frames.isEmpty();
+	}
 }

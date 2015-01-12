@@ -28,7 +28,7 @@ import java.io.IOException;
 
 import edu.monash.unrealrfb.server.constants.rfb;
 
-public class Raw extends Rect
+public class Raw extends SimpleRectangle
 {
 	//
 	// Attributes
@@ -82,6 +82,12 @@ public class Raw extends Rect
 		super.writeData( output );
 		output.writeInt( rfb.EncodingRaw );
 		output.write( bytes );
+	}
+
+	@Override
+	public int getEncodingType() {
+		// TODO Auto-generated method stub
+		return rfb.EncodingRaw;
 	}
 
 	//
