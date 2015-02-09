@@ -1,0 +1,17 @@
+Rect.encode creates REE rectangle
+
+Here’s the protocol (it’s quite simple):
+	First the client connects to the Unity server, with a socket connection.
+	It then transmits the following bytes
+
+	byte0&1: 16bit int texture width
+	byte2&3: 16bit int texture height
+	byte4: clientID (this is sent because Unity acts as a “dumb” server and doesn’t keep track of connections - this may change in the future but it’s just one byte so it’s not a massive issue I suppose)
+	byte5: panelID
+	byte6&7&8&9: 32bit int number of rectangles
+	byte10&11&12&13: background colour, defined by RGBA format in four bytes (one for each colour)
+	bytes10+: colour rectangles, in the following format:
+	rectWidth (16 bit int) | rect height (16 bit int)  | rectStartX (16 bit int) | rectStartY (16 bit int) | rectColour (32 bit RGBA colour)
+
+
+Rect.encode now also supports DEFLATE algorithm
